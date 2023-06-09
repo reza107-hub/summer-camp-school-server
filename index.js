@@ -1,12 +1,30 @@
 const express = require('express');
 const cors = require('cors');
 const port = process.env.PORT || 5000
+const jwt = require('jsonwebtoken');
 const app = express()
 const { MongoClient, ServerApiVersion } = require('mongodb');
 
 app.use(cors())
 app.use(express.json())
 require('dotenv').config()
+
+const verifyJWT = (req, res, next) => {
+    const authorization = req.headers.authorization;
+    if (!authorization) {
+        return res.status(401).send({ error: true, message: 'unauthorized access' });
+    }
+    // bearer token
+    const token = authorization.split(' ')[1];
+
+    jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
+        if (err) {
+            return res.status(401).send({ error: true, message: 'unauthorized access' })
+        }
+        req.decoded = decoded;
+        next();
+    })
+}
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.tfxumrl.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -26,9 +44,51 @@ async function run() {
 
         const courseCollections = client.db('campSporty').collection('courses')
 
+        const instructorCollections = client.db('campSporty').collection('instructors')
+
+        const selectedCoursesCollection = client.db('campSporty').collection('selectedCourses')
+
+        app.post('/jwt', (req, res) => {
+            const user = req.body
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn: '1h' })
+            res.send({ token })
+        })
+
         app.get('/courses', async (req, res) => {
-            const query = { enrolledStudents: -1}
+            const query = { enrolledStudents: -1 }
             const result = await courseCollections.find().sort(query).toArray()
+            res.send(result)
+        })
+
+        app.get('/instructors', async (req, res) => {
+            const result = await instructorCollections.find().toArray()
+            res.send(result)
+        })
+
+        app.get('/selectedcourse', async (req, res) => {
+            const email = req.query.email
+            const result = await selectedCoursesCollection.find({ email }).toArray()
+            res.send(result)
+        })
+
+        app.post('/selectedcourse', async (req, res) => {
+            const { email, ...course } = req.body;
+
+            const existingRecord = await selectedCoursesCollection.findOne({
+                email: email,
+                courseId: course._id
+            });
+
+            if (existingRecord) {
+                return res.status(401).send({
+                    error: true,
+                    message: 'User has already enrolled in this course.'
+                });
+            }
+            const result = await selectedCoursesCollection.insertOne({
+                email: email,
+                courseId: course._id
+            });
             res.send(result)
         })
 
