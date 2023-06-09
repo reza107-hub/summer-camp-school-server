@@ -3,7 +3,7 @@ const cors = require('cors');
 const port = process.env.PORT || 5000
 const jwt = require('jsonwebtoken');
 const app = express()
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 app.use(cors())
 app.use(express.json())
@@ -76,7 +76,7 @@ async function run() {
 
             const existingRecord = await selectedCoursesCollection.findOne({
                 email: email,
-                courseId: course._id
+                courseId: course._id,
             });
 
             if (existingRecord) {
@@ -90,6 +90,13 @@ async function run() {
                 courseId: course._id
             });
             res.send(result)
+        })
+
+        app.delete('/selectedcourse/:id', async (req, res) => {
+            const selectedCourseId = req.params.id;
+            const query = { _id: new ObjectId(selectedCourseId) }
+            const result = await selectedCoursesCollection.deleteOne(query);
+            res.send(result);
         })
 
         // Send a ping to confirm a successful connection
