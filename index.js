@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+require('dotenv').config()
 const port = process.env.PORT || 5000
 const jwt = require('jsonwebtoken');
 const app = express()
@@ -7,7 +8,9 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 app.use(cors())
 app.use(express.json())
-require('dotenv').config()
+
+
+const stripe = require('stripe')(process.env.ACCESS_Payment_key)
 
 const verifyJWT = (req, res, next) => {
     const authorization = req.headers.authorization;
@@ -48,6 +51,8 @@ async function run() {
 
         const selectedCoursesCollection = client.db('campSporty').collection('selectedCourses')
 
+        const paymentCollection = client.db("campSporty").collection("payments");
+
         app.post('/jwt', (req, res) => {
             const user = req.body
             const token = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn: '1h' })
@@ -87,16 +92,49 @@ async function run() {
             }
             const result = await selectedCoursesCollection.insertOne({
                 email: email,
-                courseId: course._id
+                courseId: course._id,
+                courseName: course?.courseName,
+                enrolledStudents: course?.enrolledStudents,
+                price: course?.price,
+                availableSeats: course?.availableSeats,
+                instructorId: course?.instructorId,
+                instructorName: course?.instructorName,
+                courseImage: course?.courseImage
             });
             res.send(result)
         })
 
         app.delete('/selectedcourse/:id', async (req, res) => {
             const selectedCourseId = req.params.id;
-            const query = { _id: new ObjectId(selectedCourseId) }
+            const email = req.query.email
+            console.log(selectedCourseId, email);
+            const query = { courseId: (selectedCourseId), email: email }
             const result = await selectedCoursesCollection.deleteOne(query);
             res.send(result);
+        })
+
+        app.post('/create-payment-intent', async (req, res) => {
+            const { price } = req.body;
+            const amount = parseInt(price * 100);
+            console.log(price, amount);
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ['card']
+            });
+            console.log(paymentIntent);
+            res.send({
+                clientSecret: paymentIntent.client_secret
+            })
+        })
+
+        app.post('/payments', async (req, res) => {
+            const payment = req.body;
+            const insertResult = await paymentCollection.insertOne(payment);
+            const query = { _id: new ObjectId(payment.item) }
+            const deletedResult = await selectedCoursesCollection.deleteOne(query)
+
+            res.send({ insertResult, deletedResult });
         })
 
         // Send a ping to confirm a successful connection
