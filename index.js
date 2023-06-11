@@ -131,11 +131,19 @@ async function run() {
             const query = { _id: new ObjectId(payment.item) }
             const deletedResult = await selectedCoursesCollection.deleteOne(query)
 
-            res.send({ insertResult, deletedResult });
+            const filter = { _id: new ObjectId(payment?.courseId) }
+
+            const updateDoc = {
+                $inc: { availableSeats: -1, enrolledStudents: 1 }
+            };
+
+            const updateResult = await courseCollections.updateOne(filter, updateDoc)
+
+            res.send({ insertResult, deletedResult, updateResult });
         })
 
         app.get('/payments', async (req, res) => {
-            const query = { email:req.query.email }
+            const query = { email: req.query.email }
             const Result = await paymentCollection.find(query).toArray();
             res.send(Result);
         })
