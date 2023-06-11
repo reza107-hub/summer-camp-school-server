@@ -76,6 +76,13 @@ async function run() {
             res.send(result)
         })
 
+        app.get('/payments', async (req, res) => {
+            const query = { email: req.query.email }
+            const Result = await paymentCollection.find(query).sort({ date: -1 }).toArray();
+            res.send(Result);
+        })
+
+
         app.post('/selectedcourse', async (req, res) => {
             const { email, ...course } = req.body;
 
@@ -104,13 +111,6 @@ async function run() {
             res.send(result)
         })
 
-        app.delete('/selectedcourse/:id', async (req, res) => {
-            const selectedCourseId = req.params.id;
-            const email = req.query.email
-            const query = { courseId: (selectedCourseId), email: email }
-            const result = await selectedCoursesCollection.deleteOne(query);
-            res.send(result);
-        })
 
         app.post('/create-payment-intent', async (req, res) => {
             const { price } = req.body;
@@ -142,11 +142,15 @@ async function run() {
             res.send({ insertResult, deletedResult, updateResult });
         })
 
-        app.get('/payments', async (req, res) => {
-            const query = { email: req.query.email }
-            const Result = await paymentCollection.find(query).toArray();
-            res.send(Result);
+
+        app.delete('/selectedcourse/:id', async (req, res) => {
+            const selectedCourseId = req.params.id;
+            const email = req.query.email
+            const query = { courseId: (selectedCourseId), email: email }
+            const result = await selectedCoursesCollection.deleteOne(query);
+            res.send(result);
         })
+
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
