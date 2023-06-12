@@ -52,11 +52,26 @@ async function run() {
         const selectedCoursesCollection = client.db('campSporty').collection('selectedCourses')
 
         const paymentCollection = client.db("campSporty").collection("payments");
+        const usersCollection = client.db("campSporty").collection("users");
 
         app.post('/jwt', (req, res) => {
             const user = req.body
             const token = jwt.sign(user, process.env.ACCESS_TOKEN, { expiresIn: '1h' })
             res.send({ token })
+        })
+
+        app.patch('/users/admin/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const updateDoc = {
+                $set: {
+                    role: 'admin'
+                },
+            };
+
+            const result = await usersCollection.updateOne(filter, updateDoc);
+            res.send(result);
+
         })
 
         app.get('/courses', async (req, res) => {
@@ -80,6 +95,16 @@ async function run() {
             const query = { email: req.query.email }
             const Result = await paymentCollection.find(query).sort({ date: -1 }).toArray();
             res.send(Result);
+        })
+
+        app.get('/users', async (req, res) => {
+            const result = await usersCollection.find().toArray()
+            res.send(result)
+        })
+
+        app.post('/users', async (req, res) => {
+            const result = await usersCollection.insertOne(req.body)
+            res.send(result)
         })
 
 
