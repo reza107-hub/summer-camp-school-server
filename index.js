@@ -60,6 +60,7 @@ async function run() {
             res.send({ token })
         })
 
+
         app.get('/users/admin/:email', async (req, res) => {
             const email = req.params.email;
 
@@ -68,6 +69,16 @@ async function run() {
             const result = { admin: user?.role === 'admin' }
             res.send(result);
         })
+
+        app.get('/users/instructor/:email', async (req, res) => {
+            const email = req.params.email;
+
+            const query = { email: email }
+            const user = await usersCollection.findOne(query);
+            const result = { instructor: user?.role === 'instructor' }
+            res.send(result);
+        })
+
 
         app.patch('/users/admin/:id', async (req, res) => {
             const id = req.params.id;
@@ -83,8 +94,22 @@ async function run() {
 
         })
 
+        app.patch('/users/instructor/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const updateDoc = {
+                $set: {
+                    role: 'instructor'
+                },
+            };
+
+            const result = await usersCollection.updateOne(filter, updateDoc);
+            res.send(result);
+
+        })
+
         app.get('/courses', async (req, res) => {
-            const query = { enrolledStudents: -1 }
+            const query = { availableSeats: 1 }
             const result = await courseCollections.find().sort(query).toArray()
             res.send(result)
         })
@@ -111,7 +136,19 @@ async function run() {
             res.send(result)
         })
 
+        app.post('/courses', async (req, res) => {
+            const body = req.body
+            const result = await courseCollections.insertOne(body)
+            res.send(result)
+        })
+
         app.post('/users', async (req, res) => {
+            const user = req.body;
+            const query = { email: user.email }
+            const existingUser = await usersCollection.findOne(query);
+            if (existingUser) {
+                return res.send({ message: 'user already exists' })
+            }
             const result = await usersCollection.insertOne(req.body)
             res.send(result)
         })
@@ -183,6 +220,20 @@ async function run() {
             const query = { courseId: (selectedCourseId), email: email }
             const result = await selectedCoursesCollection.deleteOne(query);
             res.send(result);
+        })
+
+        app.patch('/courses/:id', async (req, res) => {
+            const id = req.params.id;
+            console.log(id);
+            const filter = { _id: new ObjectId(id) };
+            const updateDoc = {
+                $set: {
+                    status: 'approved'
+                },
+            };
+            const result = await courseCollections.updateOne(filter, updateDoc);
+            res.send(result);
+
         })
 
 
