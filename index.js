@@ -224,11 +224,11 @@ async function run() {
 
         app.patch('/courses/:id', async (req, res) => {
             const id = req.params.id;
-            console.log(id);
+            const status = req.query.status
             const filter = { _id: new ObjectId(id) };
             const updateDoc = {
                 $set: {
-                    status: 'approved'
+                    status: status
                 },
             };
             const result = await courseCollections.updateOne(filter, updateDoc);
